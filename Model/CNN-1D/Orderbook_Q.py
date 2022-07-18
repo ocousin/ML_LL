@@ -28,7 +28,7 @@ sns.set()
 #format the name of the file wanted for the simulation using the two var asset and level
 asset = 'AAPL'
 level = 10 
-data = pd.read_csv('../../data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv'.format(asset, level), header=None)
+data = pd.read_csv('../../Data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv'.format(asset, level), header=None)
 data.head()
 
 levels = list(range(1, level + 1))
