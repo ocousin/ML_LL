@@ -21,6 +21,8 @@ from brevitas.quant import Int8ActPerTensorFixedPoint as ActQuant
 from brevitas.quant import Int8BiasPerTensorFixedPointInternalScaling as BiasQuant
 from brevitas.export import PyXIRManager
 
+from preProcessing import preprocess, loadData
+
 print("DONE")
 
 sns.set()
@@ -28,7 +30,8 @@ sns.set()
 #format the name of the file wanted for the simulation using the two var asset and level
 asset = 'AAPL'
 level = 10 
-data = pd.read_csv('../../Data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv'.format(asset, level), header=None)
+#data = pd.read_csv('../../Data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv'.format(asset, level), header=None)
+data = loadData('../../Data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv',asset , level)
 data.head()
 
 levels = list(range(1, level + 1))
@@ -149,35 +152,7 @@ print(Y)
 
 print(X.head(1))
 
-def f_default():
-	return X 
 
-## normalise with norm_x=(x-mean_x)/(std_x)
-
-def norm(X):
-	return (X-X.mean())/X.std()
-
-## minimal scaling
-def minmax(X):
-	return (X-X.min())/(X.max()-X.min())
-
-## normalise with max
-def max(X):
-	return X/X.max()
-
-## log return
-def log_return(X):
-	return X
-
-
-def preprocess(case):
-	return{
-    		1:norm,
-		2:minmax,
-		3:max,
-		4:log_return,
-	
-	}.get(case,f_default)
 
 #print("fea 1")
 #print(preprocess(3)(X))
@@ -242,10 +217,6 @@ class Net(nn.Module):
   def forward(self, x):
     x = F.relu(self.fc1(x))
     x = F.relu(self.fc2(x))
-    #print("x in fc3")
-    #print(x)
-    #print(self.fc3(x))
-    #print(torch.sigmoid(self.fc3(x)))
     return torch.sigmoid(self.fc3(x))*0.8+0.1
 
 net = Net(X_train_T.shape[1])
