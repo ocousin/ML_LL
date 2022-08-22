@@ -7,7 +7,7 @@ import pandas as pd
 
 
 
-def  loadDataOrderBook (filename, asset, level):
+def loadDataOrderBook (filename, asset, level):
 	if level not in [1, 5, 10]:
 		raise SyntaxError('Files only supports level 1, 5 and 10')
 	return pd.read_csv(filename.format(asset, level))
@@ -38,8 +38,42 @@ def max(X):
 	return X/X.max()
 
 ## log return
-def log_return(X):
-	return X
+def log_return(X, level, num_lags):
+    out_X = pd.DataFrame()
+    print(out_X.head())
+    for i in range(1, level + 1):
+        out_X['log_return_ask_{0}'.format(i)] = np.log(X['ask_{0}'.format(i)].pct_change() + 1)
+
+        out_X['log_return_bid_{0}'.format(i)] = np.log(X['bid_{0}'.format(i)].pct_change() + 1)
+
+        out_X['log_ask_{0}_div_bid_{0}'.format(i)] = np.log(X['ask_{0}'.format(i)] / X['bid_{0}'.format(i)])
+
+        out_X['log_volume_ask_{0}_div_bid_{0}'.format(i)] = np.log(X['volume_ask_{0}'.format(i)] / X['volume_bid_{0}'.format(i)])
+        
+        out_X['log_volume_ask_{0}'.format(i)] = np.log(X['volume_ask_{0}'.format(i)])
+        
+        out_X['log_volume_bid_{0}'.format(i)] = np.log(X['volume_bid_{0}'.format(i)])
+        
+        if i != 1:
+            out_X['log_ask_{0}_div_ask_1'.format(i)] = np.log(X['ask_{0}'.format(i)] / X['ask_1'])
+            out_X['log_bid_{0}_div_bid_1'.format(i)] = np.log(X['bid_{0}'.format(i)] / X['bid_1'])
+            out_X['log_volume_ask_{0}_div_ask_1'.format(i)] = np.log(X['volume_ask_{0}'.format(i)] / X['volume_ask_1'])
+            out_X['log_volume_bid_{0}_div_bid_1'.format(i)] = np.log(X['volume_bid_{0}'.format(i)] / X['volume_bid_1'])
+        
+    out_X['log_total_volume_ask'] = np.log(X[['volume_ask_{0}'.format(x) for x in list(range(1, level + 1))]].sum(axis = 1))
+    out_X['log_total_volume_bid'] = np.log(X[['volume_bid_{0}'.format(x) for x in list(range(1, level + 1))]].sum(axis = 1))
+            
+    mid_price = (X['ask_1'] + X['bid_1']) / 2
+    out_X['log_return_mid_price'] = np.log(mid_price.pct_change() + 1).shift(-1)
+   
+    cols_features = out_X.columns.drop(target_column)
+
+    out_X = out_X.assign(**{
+        '{}_(t-{})'.format(col, t): out_X[col].shift(t)
+        for t in list(range(1, num_lags))
+        for col in cols_features})
+
+    return out_X.dropna()
 
 
 def preprocess(case):
@@ -51,13 +85,9 @@ def preprocess(case):
 	
 	}.get(case,f_default)
 
-def calculate_accuracy(Y_true, Y_pred):
+def calculate_accuracy(Y_true, Y_pred,result_high,result_low):
   predicted = Y_pred.ge(.5).view(-1) ##threshold 0.5
-  #print("prediected")
-  #print(predicted)
-  #predicted1 = Y_pred.ge(.5)
-  #print(predicted1*0.8+0.1)  
-  return (Y_true == (predicted*0.8+0.1)).sum().float() / len(Y_true)
+  return (Y_true == (predicted*(result_high-result_low)+result_low)).sum().float() / len(Y_true)
 
 def round_tensor(t, decimal_places=5):
   return round(t.item(), decimal_places)
