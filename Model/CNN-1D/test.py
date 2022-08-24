@@ -173,17 +173,17 @@ class QuantWeightNet(nn.Module):
         self.relu3 = qnn.QuantReLU()
         self.fc5   = qnn.QuantLinear(20, 20, bias=True, weight_bit_width=q_bit_width)
         self.relu4 = qnn.QuantReLU()
-        self.fc3   = qnn.QuantLinear(7, 1, bias=False, weight_bit_width=q_bit_width)
+        self.fc3   = qnn.QuantLinear(20, 1, bias=False, weight_bit_width=q_bit_width)
         
 
     def forward(self, x):
-        #x = self.relu1(self.fc1(x))
-        #x = self.relu2(self.fc2(x))
-        #x = self.relu3(self.fc4(x))
-        #x = self.relu4(self.fc5(x))
-        #return (torch.sigmoid(self.fc3(x))*(result_high-result_low)+result_low)
+        x = self.relu1(self.fc1(x))
+        x = self.relu2(self.fc2(x))
+        x = self.relu3(self.fc4(x))
+        x = self.relu4(self.fc5(x))
+        return (torch.sigmoid(self.fc3(x))*(result_high-result_low)+result_low)
 
-        return ((self.fc3(x))*(result_high-result_low)+result_low)
+        #return ((self.fc3(x))*(result_high-result_low)+result_low) #Why is this stop ONNX export to work tested with 1 Layer
 
 
 net_q= QuantWeightNet(X_train_T.shape[1])
@@ -202,7 +202,8 @@ optimizer_q = optim.Adam(net_q.parameters(), lr=0.0003)
 
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #eport ONNX does not work with GPU data
+device='cpu'
 #transfer data to the GPU
 X_train = X_train_T.to(device)
 Y_train = Y_train_T.to(device)
@@ -228,72 +229,100 @@ print(Y_test.shape)
 #print(optimizer_q.param_groups)
 
 
-MODEL_PATH = 'model1.pt'
+MODEL_PATH = 'model1.pt'    # Full FP implementation 
 torch.save(net1, MODEL_PATH)
-#net1 = torch.load(MODEL_PATH)
+#net1 = torch.load(MODEL_PATH) #no need to re-load
 print("Done saving net")
 
-MODEL_PATH = 'model_q.pt'
+MODEL_PATH = 'model_q.pt'   #Quantized version of the full FP implemtation
 torch.save(net_q.state_dict(), MODEL_PATH)
-#net_q = torch.load(MODEL_PATH)
+#net_q = torch.load(MODEL_PATH) #no need to re-load
 print("Done saving Q net")
 
 
-inp=torch.empty((1,1,1,7))
+#inp=torch.empty((1,1,1,7))
 inp=torch.randn(1,1,1,7)
-#inp = torch.tensor((1,1,1,7))
+#inp=torch.randn(1,7)
 
 #print(inp)
-print(inp.shape)
+#print(inp.shape)
 
 
-#FINNManager.export(net_q, input_shape=(1, 1, 1, 7), export_path='finn_qnet.onnx')
+
 
 #from brevitas.export import export_brevitas_onnx
 
 #export_brevitas_onnx(net_q, input_t=inp, export_path='finn_qnet.onnx')
-
+from brevitas.export import FINNManager
 from brevitas.export import export_finn_onnx
+FINNManager.export(net_q, input_t=inp, export_path='finn_QWNet111.onnx')
 
-export_finn_onnx(net_q, input_t=inp, export_path='finn_qnet.onnx')
-
-
-for epoch in range(1000):
-      optimizer1.zero_grad() #reset Gradient descent
-      optimizer_q.zero_grad()      
-      Y_pred = net1(X_train)
-      Y_pred_q = net_q(X_train)
-      Y_pred = torch.squeeze(Y_pred)
-      Y_pred_q = torch.squeeze(Y_pred_q)
-      criterion=nn.BCELoss()
-      train_loss = criterion(Y_pred, Y_train)
-      train_loss_q = criterion(Y_pred_q, Y_train)
-      train_loss.backward() #propagate the error currently making     
-      optimizer1.step()      #optimise 
-      train_loss_q.backward() #propagate the error currently making     
-      optimizer_q.step()
-
-      if epoch % 100==0:
-        train_acc = calculate_accuracy(Y_train, Y_pred,result_high,result_low)
-        train_acc_q = calculate_accuracy(Y_train, Y_pred,result_high,result_low)
-        Y_test_pred = net1(X_test)
-        Y_test_pred = torch.squeeze(Y_test_pred)
-        test_loss = criterion(Y_test_pred, Y_test)
-        test_acc = calculate_accuracy(Y_test, Y_test_pred,result_high,result_low)
-        print(
-  f'''epoch {epoch}
-  Train set - loss: {round_tensor(train_loss)}, accuracy: {round_tensor(train_acc)}
-  Test  set - loss: {round_tensor(test_loss)}, accuracy: {round_tensor(test_acc)}
-  ''')
-        Y_test_pred_q = net_q(X_test)
-        Y_test_pred_q = torch.squeeze(Y_test_pred_q)
-        test_loss_q = criterion(Y_test_pred_q, Y_test)
-        test_acc_q = calculate_accuracy(Y_test, Y_test_pred_q,result_high,result_low)
-        print(
-  f'''epoch {epoch}
-  QTrain set - loss: {round_tensor(train_loss_q)}, accuracy: {round_tensor(train_acc_q)}
-  QTest  set - loss: {round_tensor(test_loss_q)}, accuracy: {round_tensor(test_acc_q)}
-  ''')
+#export_finn_onnx(net_q, input_t=inp, export_path='finn_qnet.onnx')
 
 
+# for epoch in range(1000):
+#       optimizer1.zero_grad() #reset Gradient descent
+#       optimizer_q.zero_grad()      
+#       Y_pred = net1(X_train)
+#       Y_pred_q = net_q(X_train)
+#       Y_pred = torch.squeeze(Y_pred)
+#       Y_pred_q = torch.squeeze(Y_pred_q)
+#       criterion=nn.BCELoss()
+#       train_loss = criterion(Y_pred, Y_train)
+#       train_loss_q = criterion(Y_pred_q, Y_train)
+#       train_loss.backward() #propagate the error currently making     
+#       optimizer1.step()      #optimise 
+#       train_loss_q.backward() #propagate the error currently making     
+#       optimizer_q.step()
 
+#       if epoch % 100==0:
+#         train_acc = calculate_accuracy(Y_train, Y_pred,result_high,result_low)
+#         train_acc_q = calculate_accuracy(Y_train, Y_pred,result_high,result_low)
+#         Y_test_pred = net1(X_test)
+#         Y_test_pred = torch.squeeze(Y_test_pred)
+#         test_loss = criterion(Y_test_pred, Y_test)
+#         test_acc = calculate_accuracy(Y_test, Y_test_pred,result_high,result_low)
+#         print(
+#   f'''epoch {epoch}
+#   Train set - loss: {round_tensor(train_loss)}, accuracy: {round_tensor(train_acc)}
+#   Test  set - loss: {round_tensor(test_loss)}, accuracy: {round_tensor(test_acc)}
+#   ''')
+#         Y_test_pred_q = net_q(X_test)
+#         Y_test_pred_q = torch.squeeze(Y_test_pred_q)
+#         test_loss_q = criterion(Y_test_pred_q, Y_test)
+#         test_acc_q = calculate_accuracy(Y_test, Y_test_pred_q,result_high,result_low)
+#         print(
+#   f'''epoch {epoch}
+#   QTrain set - loss: {round_tensor(train_loss_q)}, accuracy: {round_tensor(train_acc_q)}
+#   QTest  set - loss: {round_tensor(test_loss_q)}, accuracy: {round_tensor(test_acc_q)}
+#   ''')
+
+
+
+#BUILD IP WITH FINN
+import finn.builder.build_dataflow as build
+import finn.builder.build_dataflow_config as build_cfg
+import os
+import shutil
+
+model_file = "finn_QWNet111.onnx"
+
+estimates_output_dir = "output_estimates_only"
+
+#Delete previous run results if exist
+if os.path.exists(estimates_output_dir):
+    shutil.rmtree(estimates_output_dir)
+    print("Previous run results deleted!")
+
+
+cfg_estimates = build.DataflowBuildConfig(
+    output_dir          = estimates_output_dir,
+    mvau_wwidth_max     = 80,
+    target_fps          = 1000000,
+    synth_clk_period_ns = 10.0,
+    fpga_part           = "xc7z020clg400-1",
+    steps               = build_cfg.estimate_only_dataflow_steps,
+    generate_outputs=[
+        build_cfg.DataflowOutputType.ESTIMATE_REPORTS,
+    ]
+)
