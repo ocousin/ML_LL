@@ -4,8 +4,8 @@ import itertools
 #from catboost import CatBoostRegressor
 from sklearn.metrics import mean_squared_error
 import scipy.stats
-from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
-from hyperopt.pyll.base import scope
+#from hyperopt import hp, tpe, fmin, Trials, STATUS_OK
+#from hyperopt.pyll.base import scope
 import seaborn as sns
 from matplotlib import cm, pyplot as plt
 from scipy import stats as st
