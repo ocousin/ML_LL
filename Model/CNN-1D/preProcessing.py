@@ -1,5 +1,7 @@
 
 import pandas as pd
+import json
+
 
 
 # data1 = loadDataOrderBook('../../Data/{0}_2012-06-21_34200000_57600000_orderbook_{1}.csv', asset, level)
@@ -19,7 +21,10 @@ def loadDataMessage (filename, asset, level):
 	return pd.read_csv(filename.format(asset, level))
 
 
-
+def read_json_dict(filename):
+    with open(filename, "r") as f:
+        ret = json.load(f)
+    return ret
 
 def f_default():
 	return X 
