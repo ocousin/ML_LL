@@ -3,6 +3,8 @@
 
 import onnx 
 import torch 
+import os
+from preProcessing import *
 
 from qonnx.core.modelwrapper import ModelWrapper
 
@@ -53,9 +55,13 @@ from finn.util.visualization import showInNetron
 
 
 
+# 3 Load dataset into the Brevitas Model
+
+#skipped this is for testing the hardware later
 
 
 # #BUILD IP WITH FINN
+#https://github.com/Xilinx/finn/blob/main/notebooks/end2end_example/cybersecurity/3-build-accelerator-with-finn.ipynb
 import finn.builder.build_dataflow as build
 import finn.builder.build_dataflow_config as build_cfg
 import os
@@ -65,7 +71,8 @@ model_file = "finn_QWNet111.onnx"
 
 estimates_output_dir = "output_estimates_only"
 
-#Delete previous run results if exist
+# #Delete previous run results if exist
+print("Generation the IP and the estimated resource reports")
 if os.path.exists(estimates_output_dir):
     shutil.rmtree(estimates_output_dir)
     print("Previous run results deleted!")
@@ -84,3 +91,44 @@ cfg_estimates = build.DataflowBuildConfig(
 )
 #%%time
 build.build_dataflow_cfg(model_file, cfg_estimates)
+print("/n ls -l ./output_estimates_only")
+cmd = 'ls -l ./output_estimates_only'
+os.system(cmd)
+print("/n ls -l ./output_estimates_only/report")
+cmd = 'ls -l ./output_estimates_only/report'
+os.system(cmd)
+print("/n cat output_estimates_only/report/estimate_network_performance.json")
+cmd = 'cat output_estimates_only/report/estimate_network_performance.json'
+os.system(cmd)
+
+print("\n reading estimate_layer_cycles.json ")
+print(read_json_dict("output_estimates_only/report/estimate_layer_cycles.json"))
+print("\n reading estimate_layer_resources.json")
+print(read_json_dict(estimates_output_dir + "/report/estimate_layer_resources.json"))
+
+# print("Generation the STICHED IP, RTL_SIM, and SYNTH")
+
+# model_file = "finn_QWNet111.onnx"
+
+# rtlsim_output_dir = "output_ipstitch_ooc_rtlsim"
+
+# #Delete previous run results if exist
+# if os.path.exists(rtlsim_output_dir):
+#     shutil.rmtree(rtlsim_output_dir)
+#     print("Previous run results deleted!")
+
+# cfg_stitched_ip = build.DataflowBuildConfig(
+#     output_dir          = rtlsim_output_dir,
+#     mvau_wwidth_max     = 80,
+#     target_fps          = 1000000,
+#     synth_clk_period_ns = 10.0,
+#     fpga_part           = "xc7z020clg400-1",
+#     generate_outputs=[
+#         build_cfg.DataflowOutputType.STITCHED_IP,
+#         build_cfg.DataflowOutputType.RTLSIM_PERFORMANCE,
+#         build_cfg.DataflowOutputType.OOC_SYNTH,
+#     ]
+# )
+
+# #%%time
+# build.build_dataflow_cfg(model_file, cfg_stitched_ip)
