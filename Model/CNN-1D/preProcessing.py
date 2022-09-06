@@ -202,7 +202,7 @@ def log_return(X, level, num_lags):
 
     return out_X.dropna()
 
-## function to choice which data preprocessing to be done
+## function to choose which data preprocessing to be done
 def preprocess(case):
 	return{
         1:norm,
